@@ -2,6 +2,9 @@
 const express = require('express')
 const app = express()
 
+//require fetch
+const fetch = require('node-fetch')
+
 //use json so we can access body
 app.use(express.json())
 
@@ -9,7 +12,7 @@ app.use(express.json())
 require('dotenv').config()
 
 //user mongoclient for database
-const { MongoClient } = require("mongodb")
+const { MongoClient, ObjectID } = require("mongodb")
 
 //our port
 const PORT = process.env.PORT || 3000
@@ -18,13 +21,16 @@ const databaseName = "TeamFree99Database"
 //connection string for mongo atlas
 const connection_string = `mongodb+srv://admin:${process.env.PW}@cluster0.4v0gp.mongodb.net/${databaseName}?retryWrites=true&w=majority`
 
+//api URL for unsplash
+const unsplashURL = `https://api.unsplash.com/search/photos/?client_id=${process.env.API_KEY}&query=`
+
 //useUnifiedTopology to get rid of the warning
 //this is where the CRUD will all happen
 MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, client) => {
       if (err) return console.error(err)
 
       const db = client.db('TeamFree99Database')
-      const namesCollection = db.collection('names')
+      const destinationsCollection = db.collection('destinations')
       const locationsCollection = db.collection('locations')
 
 
@@ -35,18 +41,51 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
 
 
       //has to be async so we can get the data from namesCollection
-      app.get("/test", async (req, res) => {
-            const outputNames = await namesCollection.find().toArray()
-            const outputLocations = await locationsCollection.find().toArray()
+      app.get("/test", (req, res) => {
+            // const outputNames = namesCollection.find().toArray()
+            // const outputLocations = locationsCollection.find().toArray()
 
-            console.log({ outputNames, outputLocations })
             res.send({ status: 'Check' })
       })
 
+      //
       app.post("/test", (req, res) => {
-            namesCollection.insertOne(req.body)
+
+            //namesCollection.insertOne(req.body)
+            const { destination, location } = req.body
+
+            //getting api request through axios
+            fetch(`${unsplashURL}${destination}${location}`).then((response) => response.json()).then((picture) => {
+                  //namesCollection.insertOne()
+            })
+
+            destinationsCollection.insertOne({
+                  destination: destination,
+                  location: location
+            })
+
             res.send({ status: 'Submitted' })
       })
 
+      app.delete("/test/:id", (req, res) => {
+
+
+            destinationsCollection.deleteOne({ "_id": ObjectID(req.params.id) })
+
+            res.send({ status: "deleted" })
+      })
+
+      app.put("/test/:id", (req, res) => {
+
+            const { destination, location } = req.body
+
+            destinationsCollection.findOneAndUpdate({ "_id": ObjectID(req.params.id) }, {
+                  $set: {
+                        destination: destination,
+                        location: location
+                  }
+            })
+            res.send({ status: 'updated' })
+      })
 
 })
