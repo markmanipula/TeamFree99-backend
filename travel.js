@@ -1,10 +1,8 @@
-var unirest = require("unirest");
+const unirest = require("unirest");
 //password is in a .env file
 require('dotenv').config()
 
-//location id of seattle is 60876
-
-var req = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
+const req = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
 
 req.query({
       "query": "Space Needle",
@@ -44,5 +42,5 @@ req.end(function (res) {
       }
 
       //NOTHING!! :(
-      console.log(outputArray[1].result_object.web_url)
+      console.log(outputArray[0].result_object.photo.images.original.url)
 });
