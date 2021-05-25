@@ -22,14 +22,14 @@ const databaseName = "TeamFree99Database"
 const connection_string = `mongodb+srv://admin:${process.env.PW}@cluster0.4v0gp.mongodb.net/${databaseName}?retryWrites=true&w=majority`
 
 //api URL for unsplash
-const unsplashURL = `https://api.unsplash.com/search/photos/?client_id=${process.env.API_KEY}&query=`
+const unsplashURL = `https://api.unsplash.com/search/photos/?client_id=${process.env.API_KEY_UNSPLASH}&query=`
 
 //useUnifiedTopology to get rid of the warning
 //this is where the CRUD will all happen
 MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, client) => {
       if (err) return console.error(err)
 
-      const db = client.db('TeamFree99Database')
+      const db = client.db(`${databaseName}`)
       const destinationsCollection = db.collection('destinations')
       const locationsCollection = db.collection('locations')
 
@@ -41,11 +41,13 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
 
 
       //has to be async so we can get the data from namesCollection
-      app.get("/test", (req, res) => {
+      app.get("/test", async (req, res) => {
             // const outputNames = namesCollection.find().toArray()
             // const outputLocations = locationsCollection.find().toArray()
 
-            res.send({ status: 'Check' })
+            const output = await locationsCollection.find().toArray()
+            console.log(output)
+            res.send({ status: 'check!' })
       })
 
       //
@@ -54,21 +56,22 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
             //namesCollection.insertOne(req.body)
             const { destination, location } = req.body
 
-            //getting api request through axios
-            fetch(`${unsplashURL}${destination}${location}`).then((response) => response.json()).then((picture) => {
+            //getting api request through node-fetch
+            fetch(`${unsplashURL}${destination} ${location}`).then((response) => response.json()).then((picture) => {
                   //namesCollection.insertOne()
-            })
 
-            destinationsCollection.insertOne({
-                  destination: destination,
-                  location: location
-            })
+                  const picURL = picture.results[0].urls.thumb
 
+                  destinationsCollection.insertOne({
+                        destination: destination,
+                        location: location,
+                        picture: picURL
+                  })
+            })
             res.send({ status: 'Submitted' })
       })
 
       app.delete("/test/:id", (req, res) => {
-
 
             destinationsCollection.deleteOne({ "_id": ObjectID(req.params.id) })
 
@@ -79,11 +82,19 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
 
             const { destination, location } = req.body
 
-            destinationsCollection.findOneAndUpdate({ "_id": ObjectID(req.params.id) }, {
-                  $set: {
-                        destination: destination,
-                        location: location
-                  }
+            //getting api request through node-fetch
+            fetch(`${unsplashURL}${destination} ${location}`).then((response) => response.json()).then((picture) => {
+
+                  const picURL = picture.results[0].urls.thumb
+
+                  destinationsCollection.findOneAndUpdate({ "_id": ObjectID(req.params.id) }, {
+                        $set: {
+                              destination: destination,
+                              location: location,
+                              picture: picURL
+                        }
+                  })
+
             })
             res.send({ status: 'updated' })
       })
