@@ -36,20 +36,21 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
 
       //a collection inside free99 database
       const LocationsCollection = db.collection("locations")
+      const SecondLocationsCollection = db.collection("second locations")
 
       //Listen to the port. this has to be first
       app.listen(PORT, () => {
             console.log(`Connected to Database at PORT:${PORT}`);
       })
 
-      //test to check if pictures are in the database
-      app.get("/display20pictures", async (req, res) => {
+      //displays the list of photos
+      app.get("/getPictures", async (req, res) => {
             const locations = await LocationsCollection.find().toArray()
             res.send(locations)
       })
 
-      //put 20 pictures for the front end
-      app.post("/put20pictures", async (req, res) => {
+
+      app.post("/putPictures", async (req, res) => {
 
             const { destination, location } = req.body
 
@@ -62,6 +63,23 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
                   picture: picURL,
             }
             await LocationsCollection.insertOne(newLocation)
+            res.send({ status: '1 picture listed' })
+      })
+
+
+      app.post("/likePictures", async (req, res) => {
+
+            const { destination, location } = req.body
+
+            const { picURL } = await getTravelAdvisorPic(destination, location)
+
+            //adding it to collection
+            const newLocation = {
+                  destination: destination,
+                  location: location,
+                  picture: picURL,
+            }
+            await SecondLocationsCollection.insertOne(newLocation)
             res.send({ status: '1 picture listed' })
       })
 
