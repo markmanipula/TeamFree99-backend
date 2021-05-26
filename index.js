@@ -12,8 +12,8 @@ const fetch = require('node-fetch')
 //use json so we can access body
 app.use(express.json())
 
-//require unirest for travel advisor api
-const unirest = require("unirest");
+//require the travel advisor
+const { getTravelAdvisorPic } = require('./travel')
 
 //password is in a .env file
 require('dotenv').config()
@@ -23,25 +23,19 @@ const { MongoClient, ObjectID } = require("mongodb")
 
 //our port
 const PORT = process.env.PORT || 3000
-const databaseName = "TeamFree99Database"
-
-//for generating id for heroku
-const { generateID } = require("./function")
-
-//require all databases
-const { FIRST_TWENTY_heroku_list } = require("./FIRST_TWENY_heroku")
-const { finalReviewLikes_heroku_list } = require("./finalReviewLikes_heroku")
-
 
 //connection string for mongo atlas
-const connection_string = `mongodb+srv://admin:${process.env.PW}@cluster0.4v0gp.mongodb.net/${databaseName}?retryWrites=true&w=majority`
+const connection_string = `mongodb+srv://admin:${process.env.PW}@cluster0.4v0gp.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
 
 //useUnifiedTopology to get rid of the warning
 //this is where the CRUD will all happen
 MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, client) => {
       if (err) return console.error(err)
 
-      const db = client.db(`${databaseName}`)
+      const db = client.db(`${process.env.DB_NAME}`)
+
+      //a collection inside free99 database
+      const LocationsCollection = db.collection("locations")
 
       //Listen to the port. this has to be first
       app.listen(PORT, () => {
@@ -49,127 +43,44 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
       })
 
       //test to check if pictures are in the database
-      app.get("/display20pictures", (req, res) => {
-            res.send(FIRST_TWENTY_heroku_list)
+      app.get("/display20pictures", async (req, res) => {
+            const locations = await LocationsCollection.find().toArray()
+            res.send(locations)
       })
 
       //put 20 pictures for the front end
-      app.post("/put20pictures", (req, res) => {
+      app.post("/put20pictures", async (req, res) => {
 
-            const { id, destination, location } = req.body
+            const { destination, location } = req.body
 
-            //this is the API syntax for travel advisor
-            req = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
+            const { picURL } = await getTravelAdvisorPic(destination, location)
 
-            req.query({
-                  "query": `${destination} ${location}`,
-                  "limit": "30",
-                  "offset": "0",
-                  "units": "mi",
-                  "location_id": "1",
-                  "currency": "USD",
-                  "sort": "relevance",
-                  "lang": "en_US"
-            });
-
-            req.headers({
-                  "x-rapidapi-key": `${process.env.API_KEY_TRAVEL}`,
-                  "x-rapidapi-host": "travel-advisor.p.rapidapi.com",
-                  "useQueryString": true
-            });
-
-            req.end(function (res) {
-                  if (res.error) throw new Error(res.error);
-
-                  //this is an array of data from the API request
-                  let array = res.body.data
-
-                  //grabs the first photo of the result
-                  let picURL = array[0].result_object.photo.images.original.url
-
-                  //adding it to local database
-                  FIRST_TWENTY_heroku_list.push({
-                        id: generateID(),
-                        destination: destination,
-                        location: location,
-                        picture: picURL,
-                  })
-
-            });
+            //adding it to collection
+            const newLocation = {
+                  destination: destination,
+                  location: location,
+                  picture: picURL,
+            }
+            await LocationsCollection.insertOne(newLocation)
             res.send({ status: '1 picture listed' })
       })
 
       //this will add to the final review
       //only going to be one picture
-      app.post("/finalReview", (req, res) => {
+      app.post("/finalReview", async (req, res) => {
 
             const { destination, location } = req.body
 
-            req = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
+            const { locationId } = await getTravelAdvisorPic(destination, location)
 
-            req.query({
-                  "query": `${destination} ${location}`,
-                  "limit": "30",
-                  "offset": "0",
-                  "units": "mi",
-                  "location_id": "1",
-                  "currency": "USD",
-                  "sort": "relevance",
-                  "lang": "en_US"
-            });
+            const recommendation = `https://www.tripadvisor.com/Attractions-g${locationId}-Activities-${destination}-${location}`
 
-            req.headers({
-                  "x-rapidapi-key": `${process.env.API_KEY_TRAVEL}`,
-                  "x-rapidapi-host": "travel-advisor.p.rapidapi.com",
-                  "useQueryString": true
-            });
-
-            req.end(function (res) {
-                  if (res.error) throw new Error(res.error);
-
-                  //the array of data
-                  let array = res.body.data
-
-                  //looking for the location id so we can redirect them to travel advisor recommendation
-
-                  const locationId = array[0].result_object.location_id
-                  //only works when state and city are inputted
-                  //will route to generic trip advisor attraction otherwise
-                  const recommendation = `https://www.tripadvisor.com/Attractions-g${locationId}-Activities-${destination}-${location}`
-                  console.log(recommendation)
-            });
-
-            res.send({ status: "Recommendation submitted" })
+            res.send({ recommendation })
       })
 
       //deletes an item with a given ID
-      app.delete("/test/:id", (req, res) => {
-
-            destinationsCollection.deleteOne({ "_id": ObjectID(req.params.id) })
-
+      app.delete("/location/:id", async (req, res) => {
+            await LocationsCollection.deleteOne({ "_id": ObjectID(req.params.id) })
             res.send({ status: "deleted" })
       })
-
-      //edits an item with a given ID
-      //probably not needed
-      app.put("/test/:id", (req, res) => {
-
-            const { destination, location } = req.body
-
-            //getting api request through node-fetch
-            fetch(`${unsplashURL}${destination} ${location}`).then((response) => response.json()).then((picture) => {
-
-                  const picURL = picture.results[0].urls.thumb
-
-                  destinationsCollection.findOneAndUpdate({ "_id": ObjectID(req.params.id) }, {
-                        $set: {
-                              destination: destination,
-                              location: location,
-                              picture: picURL
-                        }
-                  })
-            })
-            res.send({ status: 'updated' })
-      })
-
 })

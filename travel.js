@@ -2,45 +2,44 @@ const unirest = require("unirest");
 //password is in a .env file
 require('dotenv').config()
 
-const req = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
+function getTravelAdvisorPic(destination, location) {
 
-req.query({
-      "query": "Space Needle",
-      "limit": "30",
-      "offset": "0",
-      "units": "mi",
-      "location_id": "1",
-      "currency": "USD",
-      "sort": "relevance",
-      "lang": "en_US"
-});
+      return new Promise((resolve, reject) => {
+            const travelReq = unirest("GET", "https://travel-advisor.p.rapidapi.com/locations/search");
 
-req.headers({
-      "x-rapidapi-key": `${process.env.API_KEY_TRAVEL}`,
-      "x-rapidapi-host": "travel-advisor.p.rapidapi.com",
-      "useQueryString": true
-});
+            travelReq.query({
+                  "query": `${destination} ${location}`,
+                  "limit": "30",
+                  "offset": "0",
+                  "units": "mi",
+                  "location_id": "1",
+                  "currency": "USD",
+                  "sort": "relevance",
+                  "lang": "en_US"
+            });
 
+            travelReq.headers({
+                  "x-rapidapi-key": `${process.env.API_KEY_TRAVEL}`,
+                  "x-rapidapi-host": "travel-advisor.p.rapidapi.com",
+                  "useQueryString": true
+            });
 
-req.end(function (res) {
-      if (res.error) throw new Error(res.error);
+            //we ust travelRes so it wont override express' res
+            travelReq.end(function (travelRes) {
+                  if (travelRes.error) return reject(travelRes.error);
 
+                  //this is an array of data from the API request
+                  let array = travelRes.body.data
 
+                  //grabs the first photo of the result
+                  let picURL = array[0].result_object.photo.images.original.url
 
-      //checking api with travel advisor.
-      //looking at things to do for a result type
-      let array = res.body.data
+                  const locationId = array[0].result_object.location_id
 
-      console.log(array)
+                  resolve({ picURL, locationId })
 
-      let outputArray = []
+            });
+      })
+}
 
-      for (let i = 0; i < array.length; i++) {
-            if (array[i].result_type === "things_to_do") {
-                  outputArray.push(array[i])
-            }
-      }
-
-      //NOTHING!! :(
-      console.log(outputArray[0].result_object.photo.images.original.url)
-});
+exports.getTravelAdvisorPic = getTravelAdvisorPic
