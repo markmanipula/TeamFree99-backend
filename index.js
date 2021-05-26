@@ -2,7 +2,7 @@
 const express = require('express')
 const app = express()
 
-//require cors so front end can to to our backend
+//require cors so front end can access to to our backend
 const cors = require('cors')
 app.use(cors())
 
@@ -84,23 +84,19 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
                   //this is an array of data from the API request
                   let array = res.body.data
 
-                  //Grabs the first 20 url pictures from the array of data
-                  for (let i = 0; i < array.length; i++) {
+                  //grabs the first photo of the result
+                  let picURL = array[0].result_object.photo.images.original.url
 
-                        //gives users max of 20 pictures
-                        if (i >= 20) break
-                        let picURL = array[i].result_object.photo.images.original.url
+                  //adding it to local database
+                  FIRST_TWENTY_heroku_list.push({
+                        id: generateID(),
+                        destination: destination,
+                        location: location,
+                        picture: picURL,
+                  })
 
-                        //adding it to local database
-                        FIRST_TWENTY_heroku_list.push({
-                              id: generateID(),
-                              destination: destination,
-                              location: location,
-                              picture: picURL,
-                        })
-                  }
             });
-            res.send({ status: '20 pictures listed!' })
+            res.send({ status: '1 picture listed' })
       })
 
       //this will add to the final review
