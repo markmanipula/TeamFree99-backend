@@ -49,12 +49,12 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
       })
 
       //test to check if pictures are in the database
-      app.get("/test", (req, res) => {
+      app.get("/display20pictures", (req, res) => {
             res.send(FIRST_TWENTY_heroku_list)
       })
 
-      //displays 20 pictures for the front end
-      app.get("/display20", (req, res) => {
+      //put 20 pictures for the front end
+      app.post("/put20pictures", (req, res) => {
 
             const { id, destination, location } = req.body
 
