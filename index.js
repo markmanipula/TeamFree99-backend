@@ -36,20 +36,26 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
 
       //a collection inside free99 database
       const LocationsCollection = db.collection("locations")
-      const SecondLocationsCollection = db.collection("second locations")
+      const LocationsCollection_Second = db.collection("second locations")
 
       //Listen to the port. this has to be first
       app.listen(PORT, () => {
             console.log(`Connected to Database at PORT:${PORT}`);
       })
 
-      //displays the list of photos
+      //the list of photos when user submit the first time
       app.get("/getPictures", async (req, res) => {
             const locations = await LocationsCollection.find().toArray()
             res.send(locations)
       })
 
+      //the list of the photo of the user when they click like
+      app.get("/getLikedPictures", async (req, res) => {
+            const locations = await LocationsCollection_Second.find().toArray()
+            res.send(locations)
+      })
 
+      //adds to the LocationsCollections. This is the initial one
       app.post("/putPictures", async (req, res) => {
 
             const { destination, location } = req.body
@@ -63,11 +69,11 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
                   picture: picURL,
             }
             await LocationsCollection.insertOne(newLocation)
-            res.send({ status: '1 picture listed' })
+            res.send({ status: 'This picture is listed' })
       })
 
-
-      app.post("/likePictures", async (req, res) => {
+      //adds to the LocatonsCollections. This is the liked photos
+      app.post("/putLikedPictures", async (req, res) => {
 
             const { destination, location } = req.body
 
@@ -79,8 +85,8 @@ MongoClient.connect(`${connection_string}`, { useUnifiedTopology: true }, (err, 
                   location: location,
                   picture: picURL,
             }
-            await SecondLocationsCollection.insertOne(newLocation)
-            res.send({ status: '1 picture listed' })
+            await LocationsCollection_Second.insertOne(newLocation)
+            res.send({ status: 'This picture is liked!' })
       })
 
       //this will add to the final review

@@ -32,7 +32,7 @@ function getTravelAdvisorPic(destination, location) {
                   let array = travelRes.body.data
 
                   //grabs the first photo of the result
-                  let picURL = array[0].result_object.photo.images.original.url
+                  let picURL = array[0].result_object.photo.images.small.url
 
                   const locationId = array[0].result_object.location_id
 
